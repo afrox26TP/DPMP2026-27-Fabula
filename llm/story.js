@@ -3,7 +3,7 @@
 import { chat, contextSize, tokens } from "./kobold.js"
 
 const WORDS = 500         // delka jednoho kroku ve slovech
-const WINDOW = 24000      // model dostane nejvys tolik znaku z konce pribehu (asi 6 000 tokenu)
+const WINDOW = 24000      // model dostane nejvys tolik znaku z konce pribehu (asi 5 300 tokenu)
 const MEMORY_EVERY = 6000 // po tolika novych znacich se doplni pamet
 const TEMPLATE = 100      // rezerva tokenu na sablonu chatu
 
