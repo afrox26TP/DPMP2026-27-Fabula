@@ -88,7 +88,7 @@ Rukopis = kapitoly za sebou podle `position`; pro model se spoji do jednoho text
 
 ## REST API
 
-JSON, pole jako sloupce v diagramu (bez `password_hash`). Bez prihlaseni `401`, cizi nebo neexistujici zaznam `404`, spatny vstup `422`, chyba = `{"detail": "..."}` (vychozi tvar FastAPI).
+JSON, pole jako sloupce v diagramu (bez `password_hash`). Bez prihlaseni `401`, cizi nebo neexistujici zaznam `404`, spatny vstup `422`, chyba = `{"detail": ...}` (vychozi tvar FastAPI: text, u `422` seznam chyb).
 
 | Metoda a cesta | Co dela | Odpoved |
 |---|---|---|
@@ -101,6 +101,6 @@ JSON, pole jako sloupce v diagramu (bez `password_hash`). Bez prihlaseni `401`, 
 | GET `/api/projects`, `/api/styles`, `/api/projects/{id}/chapters`, `/api/projects/{id}/codex` | seznam vlastnich zaznamu | pole zaznamu |
 | POST na stejne cesty | zalozi zaznam | `201` + zaznam |
 | GET, PUT, DELETE `/api/projects/{id}`, `/api/styles/{id}`, `/api/chapters/{id}`, `/api/codex/{id}` | nacte, nahradi (posila se cely zaznam), smaze | zaznam, po smazani `204` |
-| `/api/llm/v1/chat/completions`, `/api/llm/api/extra/tokencount`, `/api/llm/api/extra/true_max_context_length` | preposle na KoboldCpp, jine cesty `404` | odpoved KoboldCpp, chat jako stream |
+| POST `/api/llm/v1/chat/completions`, POST `/api/llm/api/extra/tokencount`, GET `/api/llm/api/extra/true_max_context_length` | preposle na KoboldCpp, jine cesty `404` | odpoved KoboldCpp, chat jako stream |
 
 Priklad: `PUT /api/chapters/7` s telem `{"position": 2, "title": "Boure", "text": "…"}` vrati `200` a `{"id": 7, "project_id": 3, "position": 2, "title": "Boure", "text": "…"}`.

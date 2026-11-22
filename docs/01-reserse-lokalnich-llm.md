@@ -60,7 +60,7 @@ Ollama je pohodlnejsi na spravu modelu. Pro bod 3 ale potrebuju predem spocitat 
 
 ## Vyber modelu
 
-Kriteria: ochota (nic nezjemni), selsky rozum, proza, souvislost, vejde se. Kandidati podle UGI [7] a EQ-Bench Longform [8]. Vsechno anglicky: kazdy model napsal 3 pribehy (uvod 600 + pokracovani 1 800 tokenu) a kratke testy (ochota, realie, emoce), hodnotil naslepo cloudovy LLM (ne lide), kazdy text dvakrat. Data v `mereni/2026-11-13` mimo repo. 1. kolo: Qwen se zacyklil, Goetia porusovala fakta. Dal Gemma a WeirdCompound. 2. kolo, pribyly Gemma 31B a Hemmingway:
+Kriteria: ochota (nic nezjemni), selsky rozum, proza, souvislost, vejde se. Kandidati podle UGI [7] a EQ-Bench Longform [8]. Vsechno anglicky: kazdy model napsal 3 pribehy (uvod 600 + pokracovani 1 800 tokenu) a kratke testy (mimo jine ochota, realie, emoce), hodnotil naslepo cloudovy LLM (ne lide), pribehy a emoce dvakrat. Data v `mereni/2026-11-13` mimo repo. 1. kolo: Qwen se zacyklil, Goetia porusovala fakta. Dal Gemma a WeirdCompound. 2. kolo, pribyly Gemma 31B a Hemmingway:
 
 | | Gemma 31B | Hemm. | Gemma | WeirdC. |
 |---|---|---|---|---|
@@ -70,7 +70,7 @@ Kriteria: ochota (nic nezjemni), selsky rozum, proza, souvislost, vejde se. Kand
 | plneni planu | **8,2** | 8,0 | 6,2 | 6,8 |
 | rozbita slova | 10 | **2** | 16 | 4 |
 
-Realie = podil spravnych z overenych udaju o svete (24–39 na model). Emoce = v kolika z 10 hodnoceni byla poznat z textu, aniz ji nekdo pojmenoval. Poradi = prumer z 6 hodnoceni, 1–5 (paty text byla Gemma s jinym nastavenim). Plneni planu = body od soudce, vic je lip. U poradi a rozbitych slov (soucet z 6 hodnoceni) je mensi lepsi.
+Realie = podil spravnych z overenych udaju o svete (24–39 na model). Emoce = v kolika z 10 hodnoceni byla z textu poznat. Poradi = prumer z 6 hodnoceni, 1–5 (paty text byla Gemma s jinym nastavenim). Plneni planu = body od soudce, vic je lip. U poradi a rozbitych slov (soucet z 6 hodnoceni) je mensi lepsi.
 
 Vybral jsem **Gemma 4 31B** – nejlepsi rozum a emoce, nic neodmitla. Hemmingway pise lepsi pribehy, ale nejvic si vymysli (realie 67 %, 13 poruseni faktu nametu proti 8). Pomer vykonu a narocnosti: vsech sest modelu se vejde na stejnou kartu, plati se jen rychlosti a rezervou VRAM. Gemma 31B je 3× pomalejsi nez nejrychlejsi a nechava nejmin VRAM, ale 35 tok/s je 500 slov za 19 s, to mi staci. Rychla alternativa **Gemma 4 26B-A4B** (111 tok/s, realie 89 %).
 
