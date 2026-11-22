@@ -9,4 +9,4 @@ start.bat
 node demo.js [soubor.json] [kroku]
 ```
 
-Windows, 16 GB NVIDIA, Node 20+. `start.bat` nech bezet ve vlastnim okne. `demo.js` pripise kroky (kazdy ~500 slov) do souboru pribehu (vychozi `stories/demo.json`), kde si muzes prepsat zanr, namet a osnovu.
+Windows, 16 GB NVIDIA, Node 20+. Prikazy jsou pro `cmd` (v PowerShellu `curl.exe` a `.\start.bat`), model ma 10,9 GB. `start.bat` nech bezet ve vlastnim okne. `demo.js` pripise kroky (vychozi 4, kazdy ~500 slov) do souboru pribehu (vychozi `stories/demo.json`), kde si muzes prepsat zanr, namet a osnovu, a nakonec vypise pamet pribehu.

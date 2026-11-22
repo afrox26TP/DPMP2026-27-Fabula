@@ -4,7 +4,7 @@ const SERVER = "http://127.0.0.1:5001"
 
 // GET, nebo POST kdyz je body. vrati JSON, u streamu telo odpovedi
 async function call(path, body) {
-  const res = await fetch(SERVER + path, body && { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+  const res = await fetch(SERVER + path, body && { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => { throw new Error(`KoboldCpp is not running at ${SERVER}. Start it with start.bat.`) })
   if (!res.ok) throw new Error(`KoboldCpp ${path} returned ${res.status}`)
   return body?.stream ? res.body : res.json()
 }

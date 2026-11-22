@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
 import { continueStory, newStory } from "./llm/story.js"
 
-const [file = "stories/demo.json", steps = 2] = process.argv.slice(2)
+const [file = "stories/demo.json", steps = 4] = process.argv.slice(2)
 const story = newStory(existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {
   genre: "Mystery",
   premise: "Mara works the night shift at a coastal radio station in northern Norway. During a storm she picks up a distress call from the fishing boat Solveig, which sank with all hands thirty years ago. Her new colleague Tobias, a quiet engineer, says it must be a prank – but he knows more about the wreck than he admits.",

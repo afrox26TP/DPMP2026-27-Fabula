@@ -31,7 +31,7 @@ Now: where things stand at the end – who is where, what is unresolved, what is
 Keep the notes under 400 words. Output only the notes.`
 
 // samplery: proza ma navic DRY proti opakovani (0 = hlida cely kontext), poznamky jsou presnejsi
-const PROSE = { temperature: 0.8, min_p: 0.05, dry_multiplier: 0.8, dry_penalty_last_n: 0, dry_sequence_breakers: ["\n", "*"] }
+const PROSE = { temperature: 0.8, min_p: 0.05, dry_multiplier: 0.8, dry_allowed_length: 4, dry_penalty_last_n: 0, dry_sequence_breakers: ["\n", "*"] }
 const IDEAS = { temperature: 0.8, min_p: 0.1 }
 const EXACT = { temperature: 0.4, min_p: 0.1 }
 
@@ -42,8 +42,10 @@ async function updateMemory(story) {
   while (story.text.length - story.memoryUpTo >= MEMORY_EVERY) {
     const part = story.text.slice(story.memoryUpTo, story.memoryUpTo + MEMORY_EVERY)
     const content = `Notes on the story so far:\n${story.memory || "(none – the story starts here)"}\n\nThe next part of the story:\n"""\n${part}\n"""\n\n${NOTES}`
-    const { text } = await chat([{ role: "system", content: EDITOR }, { role: "user", content }], 900, EXACT)
-    if (!text.trim()) throw new Error("The model returned empty notes. The story memory was kept.")
+    const notes = extra => chat([{ role: "system", content: EDITOR }, { role: "user", content: content + extra }], 900, EXACT)
+    let { text, cut } = await notes("")
+    if (cut) ({ text, cut } = await notes("\nYour last attempt was too long and got cut off. This time stay under 300 words.")) // useknute poznamky by prisly o sekci Now
+    if (!text.trim() || cut) throw new Error("The model returned empty or cut notes. The story memory was kept.")
     story.memory = text
     story.memoryUpTo += part.length
   }

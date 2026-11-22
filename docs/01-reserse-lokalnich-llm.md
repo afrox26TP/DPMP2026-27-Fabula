@@ -4,7 +4,7 @@ Cil: model co se i s kontextem 16k vejde do 16 GB VRAM. Meril jsem 13. 11. 2026 
 
 ## GGUF a kvantizace
 
-GGUF = format modelu pro llama.cpp, ma v sobe i tokenizer a sablonu chatu [1]. Kvantizace ulozi vahy s min bity [2], ztrata se meri KLD [3]:
+GGUF = format modelu pro llama.cpp, ma v sobe i tokenizer a sablonu chatu [1]. Kvantizace ulozi vahy s min bity [2]. Ztrata se meri jako KLD = jak moc se predpovedi lisi od nekvantizovaneho modelu (mensi je lepsi) [3], velikost jako bpw = skutecny prumer bitu na vahu [4]:
 
 | Typ | bpw | KLD |
 |---|---|---|
@@ -13,22 +13,24 @@ GGUF = format modelu pro llama.cpp, ma v sobe i tokenizer a sablonu chatu [1]. K
 | IQ3_M | 3,76 | 0,1025 |
 | IQ3_XS | 3,50 | 0,1387 |
 | IQ3_XXS | 3,25 | 0,1836 |
+| IQ2_M | 2,93 | 0,3260 |
 | IQ2_XXS | 2,38 | 0,8120 |
 
-(Llama 3 8B [3, 4]) Pod 3 bity to jde rychle dolu, ale vetsi model v nizsi presnosti porad vetsinou vyhraje [2]. 4 bity by se nevesly (Gemma 13,92 GB [5]), takze 3 bity, a Gemma 31B se nevejde ani tak [6] – ta jede na IQ2_M. Mensi 12B modely pisou o dost hur [7, 8].
+(Llama 3 8B [3, 4]) Cislo v nazvu je priblizny pocet bitu na vahu, pripona XXS az L velikost varianty. Typy IQ byvaji lepsi nez stejne velke Q a „i1“ v nazvu souboru znamena kvantizaci s imatrix (matice dulezitosti vah z kalibracniho textu), ktera ztratu zmensuje [4, 5]. Pod 3 bity to jde rychle dolu, ale vetsi model v nizsi presnosti porad vetsinou vyhraje [2]. 4 bity (IQ4_XS) by se vedle ostatnich programu nevesly (Gemma 13,92 GB [5]), takze 3 bity, a Gemma 31B se nevejde ani tak [6] – ta jede na IQ2_M. Mensi 12B modely pisou o dost hur [7, 8].
 
 ## VRAM
 
-VRAM = vahy + KV cache + buffery [9]:
+VRAM = vahy + KV cache + buffery [9]. KV cache = mezivysledky za kazdy token v kontextu, aby se nepocitaly znovu; mam ji v 8 bitech (q8_0):
 
 | MiB pri 16k | Gemma | Goetia | Qwen | WeirdC. | Hemm. | Gemma 31B |
 |---|---|---|---|---|---|---|
 | vahy | 11 082 | 11 082 | 10 137 | 9 875 | 10 137 | 10 396 |
 | KV cache | 345 | 345 | 553 | 1 381 | 553 | 1 381 |
+| ostatni | 3 625 | 3 704 | 3 522 | 3 128 | 3 670 | 3 549 |
 | volno | 1 251 | 1 172 | 2 091 | 1 919 | 1 943 | 977 |
 | tok/s 1k/15k | 117/111 | 126/113 | 51/46 | 57/52 | 49/41 | 43/35 |
 
-Vesly se vsechny, Gemma 31B tak tak.
+Ostatni = buffery KoboldCpp (asi 500 MiB) a jine bezici programy (prohlizec, VS Code). Tok/s = rychlost generovani pri 1k a 15k tokenu v kontextu. Vesly se vsechny, Gemma 31B tak tak.
 
 ## Kontextove okno
 
@@ -58,7 +60,7 @@ Ollama je pohodlnejsi na spravu modelu. Pro bod 3 ale potrebuju predem spocitat 
 
 ## Vyber modelu
 
-Kriteria: ochota (nic nezjemni), selsky rozum, proza, souvislost, vejde se. Kandidati podle UGI [7] a EQ-Bench Longform [8]. Kazdy model napsal 3 pribehy (uvod 600 + pokracovani 1 800 tokenu) a kratke testy, hodnotil naslepo cloudovy LLM (ne lide). Data v `mereni/2026-11-13` mimo repo. 1. kolo: Qwen se zacyklil, Goetia porusovala fakta. Dal Gemma a WeirdCompound. 2. kolo:
+Kriteria: ochota (nic nezjemni), selsky rozum, proza, souvislost, vejde se. Kandidati podle UGI [7] a EQ-Bench Longform [8]. Vsechno anglicky: kazdy model napsal 3 pribehy (uvod 600 + pokracovani 1 800 tokenu) a kratke testy (ochota, realie, emoce), hodnotil naslepo cloudovy LLM (ne lide), kazdy text dvakrat. Data v `mereni/2026-11-13` mimo repo. 1. kolo: Qwen se zacyklil, Goetia porusovala fakta. Dal Gemma a WeirdCompound. 2. kolo, pribyly Gemma 31B a Hemmingway:
 
 | | Gemma 31B | Hemm. | Gemma | WeirdC. |
 |---|---|---|---|---|
@@ -68,7 +70,11 @@ Kriteria: ochota (nic nezjemni), selsky rozum, proza, souvislost, vejde se. Kand
 | plneni planu | **8,2** | 8,0 | 6,2 | 6,8 |
 | rozbita slova | 10 | **2** | 16 | 4 |
 
-Vybral jsem **Gemma 4 31B** – nejlepsi rozum a emoce, nic neodmitla. Je ale 3× pomalejsi a malo VRAM nechava. Rychla alternativa **Gemma 4 26B-A4B**. Omezeni: kazdy pribeh jen jednou a kratky, soudce je LLM (stejny text ohodnotil dvakrat jinak). Rozbita slova u Gemmy nespravila ani zmena KV cache ani DRY. Dal resit: poznamky „(Wait…“ v textu, smycky, tempo.
+Realie = podil spravnych z overenych udaju o svete (24–39 na model). Emoce = v kolika z 10 hodnoceni byla poznat z textu, aniz ji nekdo pojmenoval. Poradi = prumer z 6 hodnoceni, 1–5 (paty text byla Gemma s jinym nastavenim). Plneni planu = body od soudce, vic je lip. U poradi a rozbitych slov (soucet z 6 hodnoceni) je mensi lepsi.
+
+Vybral jsem **Gemma 4 31B** – nejlepsi rozum a emoce, nic neodmitla. Hemmingway pise lepsi pribehy, ale nejvic si vymysli (realie 67 %, 13 poruseni faktu nametu proti 8). Pomer vykonu a narocnosti: vsech sest modelu se vejde na stejnou kartu, plati se jen rychlosti a rezervou VRAM. Gemma 31B je 3× pomalejsi nez nejrychlejsi a nechava nejmin VRAM, ale 35 tok/s je 500 slov za 19 s, to mi staci. Rychla alternativa **Gemma 4 26B-A4B** (111 tok/s, realie 89 %).
+
+Omezeni: kazdy pribeh jen jednou a kratky, soudce je LLM (stejny text ohodnotil dvakrat jinak). Rozbita slova u Gemmy nespravila zmena KV cache ani zkraceni dosahu DRY, cast jich ale DRY opravdu dela (dok. 03). Dal resit: poznamky „(Wait…“ v textu, smycky, tempo.
 
 ## Zdroje
 

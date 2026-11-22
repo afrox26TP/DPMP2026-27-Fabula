@@ -11,7 +11,7 @@ flowchart LR
     GPU[("model GGUF ve VRAM")]
     UI -- "REST /api, JSON, cookie" --> API
     API -- "sqlite3" --> DB
-    API -- "/api/llm, stream" --> KC
+    API -- "preposlany pozadavek, stream" --> KC
     KC --> GPU
 ```
 
@@ -22,7 +22,7 @@ flowchart LR
 | databaze | SQLite | jeden soubor, pristup pres `sqlite3` bez ORM |
 | LLM server | KoboldCpp | drzi model ve VRAM a generuje text (dok. 01) |
 
-Vse bezi lokalne na `127.0.0.1`, backend servuje i sestaveny frontend, takze prohlizeci staci jedna adresa. Logika modelu je v JS uz z bodu 3, proto zustava ve frontendu a backend k modelu jen preposila.
+Vse bezi lokalne na `127.0.0.1`, backend servuje i sestaveny frontend, takze prohlizeci staci jedna adresa. Logika modelu (bod 3) bezi ve frontendu: text se streamuje rovnou do editoru a backend zustava tenky – ucty, data a brana, ktera pusti jen prihlaseneho a jen tri cesty, ktere logika pouziva. Nevyhoda: generuje se jen s otevrenou zalozkou.
 
 Pokracovani pribehu: frontend si pres REST API nacte projekt a kapitoly → `llm/story.js` slozi prompt a posle ho na `/api/llm` → backend overi prihlaseni a streamuje odpoved z KoboldCpp → frontend novy text a pamet ulozi pres `PUT`.
 
@@ -47,6 +47,7 @@ erDiagram
     sessions {
         TEXT token PK "nahodny, je i v cookie"
         INTEGER user_id FK
+        TEXT created_at "relace plati 30 dni"
     }
     projects {
         INTEGER id PK
@@ -58,6 +59,7 @@ erDiagram
         TEXT outline
         TEXT memory "pamet pribehu z bodu 3"
         INTEGER memory_up_to "kolik znaku textu pamet pokryva"
+        TEXT updated_at "razeni prehledu projektu"
     }
     chapters {
         INTEGER id PK
@@ -82,16 +84,23 @@ erDiagram
     }
 ```
 
-Rukopis = kapitoly za sebou podle `position`, pamet patri projektu. Smazani uzivatele nebo projektu smaze i jeho data (`ON DELETE CASCADE`), smazani stylu jen vynuluje `projects.style_id`.
+Rukopis = kapitoly za sebou podle `position`; pro model se spoji do jednoho textu a novy text se pripise do posledni kapitoly. Pamet patri projektu; kdyz se zmeni text pred `memory_up_to`, vynuluje se a spocita znovu. Styl (popis + ukazky) a kartoteka (postavy, mista, predmety) se budou vkladat do promptu. Smazani uzivatele nebo projektu smaze i jeho data (`ON DELETE CASCADE`), smazani stylu jen vynuluje `projects.style_id`.
 
 ## REST API
 
-JSON, bez prihlaseni `401`, cizi data `404`.
+JSON, pole jako sloupce v diagramu (bez `password_hash`). Bez prihlaseni `401`, cizi nebo neexistujici zaznam `404`, spatny vstup `422`, chyba = `{"detail": "..."}` (vychozi tvar FastAPI).
 
-| Cesta | Metody |
-|---|---|
-| `/api/auth/register`, `/login`, `/logout` | POST |
-| `/api/auth/me` | GET |
-| `/api/projects`, `/api/styles`, `/api/projects/{id}/chapters`, `/api/projects/{id}/codex` | GET, POST |
-| `/api/projects/{id}`, `/api/styles/{id}`, `/api/chapters/{id}`, `/api/codex/{id}` | GET, PUT, DELETE |
-| `/api/llm/…` | brana na KoboldCpp |
+| Metoda a cesta | Co dela | Odpoved |
+|---|---|---|
+| POST `/api/auth/register` | zalozi ucet `{username, password}` a prihlasi | `201` + cookie, `409` jmeno je obsazene |
+| POST `/api/auth/login` | overi heslo a zalozi relaci | `200` + cookie, `401` spatne jmeno nebo heslo |
+| POST `/api/auth/logout` | smaze relaci | `204` |
+| GET `/api/auth/me` | kdo je prihlaseny | `{id, username}` |
+| PUT `/api/auth/me` | zmeni heslo `{password, new_password}` | `204` |
+| DELETE `/api/auth/me` | smaze ucet i s daty | `204` |
+| GET `/api/projects`, `/api/styles`, `/api/projects/{id}/chapters`, `/api/projects/{id}/codex` | seznam vlastnich zaznamu | pole zaznamu |
+| POST na stejne cesty | zalozi zaznam | `201` + zaznam |
+| GET, PUT, DELETE `/api/projects/{id}`, `/api/styles/{id}`, `/api/chapters/{id}`, `/api/codex/{id}` | nacte, nahradi (posila se cely zaznam), smaze | zaznam, po smazani `204` |
+| `/api/llm/v1/chat/completions`, `/api/llm/api/extra/tokencount`, `/api/llm/api/extra/true_max_context_length` | preposle na KoboldCpp, jine cesty `404` | odpoved KoboldCpp, chat jako stream |
+
+Priklad: `PUT /api/chapters/7` s telem `{"position": 2, "title": "Boure", "text": "…"}` vrati `200` a `{"id": 7, "project_id": 3, "position": 2, "title": "Boure", "text": "…"}`.
