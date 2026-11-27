@@ -64,10 +64,12 @@ const message = (story, part, task) => [
 // kontextove okno: z pribehu se posle jen tolik, aby se pozadavek i s odpovedi vesel do kontextu modelu
 async function ask(story, task, maxTokens, samplers, onText) {
   const room = await contextSize() - maxTokens - TEMPLATE
+  const fresh = story.text.length - story.memoryUpTo // konec pribehu, ktery pamet jeste nepokryva, se ubrat nesmi
   let part = story.text.slice(-WINDOW)
   while (await tokens(WRITER + message(story, part, task)) > room) {
-    if (!part) throw new Error("The premise, outline and memory alone do not fit the model's context.")
-    part = part.slice(Math.ceil(part.length / 10)) // ubere 10 % od zacatku
+    const drop = Math.min(Math.ceil(part.length / 10), part.length - fresh) // ubere 10 % od zacatku
+    if (!(drop >= 1)) throw new Error("The premise, outline, memory and the part of the story the memory does not cover yet do not fit the model's context.")
+    part = part.slice(drop)
   }
   return chat([{ role: "system", content: WRITER }, { role: "user", content: message(story, part, task) }], maxTokens, samplers, onText)
 }
@@ -77,11 +79,14 @@ export async function continueStory(story, onPlan, onText) {
   await updateMemory(story)
   let task = OPENING
   if (story.text) {
-    const plan = (await ask(story, PLAN, 200, IDEAS)).text
-    onPlan(plan)
+    let { text: plan, cut } = await ask(story, PLAN, 200, IDEAS)
+    if (cut && !/[.!?…]["”’*)]*\s*$/.test(plan)) plan = plan.slice(0, plan.lastIndexOf("\n") + 1) // useknuty plan prijde o nedopsany posledni radek
+    if (!plan.trim()) throw new Error("The model returned an empty or cut plan.")
+    onPlan?.(plan)
     task = write(plan)
   }
   let { text, cut } = await ask(story, task, 1000, PROSE, onText)
   if (cut) text = text.match(/[\s\S]*[.!?…]["”’*)]*(?=\s|$)/)?.[0] ?? text // useknutou odpoved zkrati na posledni celou vetu
+  if (!text.trim()) throw new Error("The model returned no text.")
   story.text = `${story.text}\n\n${text}`.trim()
 }

@@ -9,6 +9,7 @@ GGUF = format modelu pro llama.cpp, ma v sobe i tokenizer a sablonu chatu [1]. K
 | Typ | bpw | KLD |
 |---|---|---|
 | Q8_0 | 8,50 | 0,0014 |
+| Q4_K_M | 4,89 | 0,0282 |
 | IQ4_XS | 4,46 | 0,0363 |
 | IQ3_M | 3,76 | 0,1025 |
 | IQ3_XS | 3,50 | 0,1387 |
@@ -16,7 +17,7 @@ GGUF = format modelu pro llama.cpp, ma v sobe i tokenizer a sablonu chatu [1]. K
 | IQ2_M | 2,93 | 0,3260 |
 | IQ2_XXS | 2,38 | 0,8120 |
 
-(Llama 3 8B [3, 4]) Cislo v nazvu je priblizny pocet bitu na vahu, pripona XXS az L velikost varianty. Typy IQ byvaji lepsi nez stejne velke Q a „i1“ v nazvu souboru znamena kvantizaci s imatrix (matice dulezitosti vah z kalibracniho textu), ktera ztratu zmensuje [4, 5]. Pod 3 bity to jde rychle dolu, ale vetsi model v nizsi presnosti porad vetsinou vyhraje [2]. 4 bity (IQ4_XS) by se vedle ostatnich programu nevesly (Gemma 13,92 GB [5]), takze 3 bity, a Gemma 31B se nevejde ani tak [6] – ta jede na IQ2_M. Mensi 12B modely pisou o dost hur [7, 8].
+(KLD je z Llama 3 8B [3], bpw z Llama 3.1 8B [4]; Q4_K_M a typy IQ s imatrix) Cislo v nazvu je priblizny pocet bitu na vahu, pripona XXS az L velikost varianty. Typy IQ byvaji lepsi nez stejne velke Q a „i1“ v nazvu souboru znamena kvantizaci s imatrix (matice dulezitosti vah z kalibracniho textu), ktera ztratu zmensuje [4, 5] – Q4_K_M ma bez ni 0,0313 [3]. Pod 3 bity to jde rychle dolu, ale vetsi model v nizsi presnosti porad vetsinou vyhraje [2]. 4 bity (IQ4_XS) by se vedle ostatnich programu nevesly (Gemma 13,92 GB [5]), takze 3 bity, a Gemma 31B se nevejde ani tak [6] – ta jede na IQ2_M. Mensi 12B modely pisou o dost hur [7, 8].
 
 ## VRAM
 
@@ -52,15 +53,15 @@ Inferencni server = program, ktery drzi model v pameti a pres HTTP API z nej gen
 | | KoboldCpp 1.121 | Ollama 0.40.16 |
 |---|---|---|
 | prepnuti modelu za behu | jen v admin rezimu [17] | samo podle pozadavku [23] |
-| velikost kontextu | `--contextsize` pri startu [19] | do 24 GiB VRAM 4k [24], pres OpenAI API zmenit nejde [18] |
-| pocitani tokenu | ano [17] | ne [25] |
+| velikost kontextu | `--contextsize` pri startu [19] | vychozi 4k do 24 GiB VRAM, meni se pres `OLLAMA_CONTEXT_LENGTH` [24], v pozadavku pres OpenAI API ne [18] |
+| pocitani tokenu predem | ano [17] | ne [25] |
 | DRY proti opakovani | ano [17] | ne [26] |
 
 Ollama je pohodlnejsi na spravu modelu. Pro bod 3 ale potrebuju predem spocitat tokeny a DRY, a to pres jeji API nejde. Beru **KoboldCpp**.
 
 ## Vyber modelu
 
-Kriteria: ochota (nic nezjemni), selsky rozum, proza, souvislost, vejde se. Kandidati podle UGI [7] a EQ-Bench Longform [8]. Vsechno anglicky: kazdy model napsal 3 pribehy (uvod 600 + pokracovani 1 800 tokenu) a kratke testy (mimo jine ochota, realie, emoce), hodnotil naslepo cloudovy LLM (ne lide), pribehy a emoce dvakrat. Data v `mereni/2026-11-13` mimo repo. 1. kolo: Qwen se zacyklil, Goetia porusovala fakta. Dal Gemma a WeirdCompound. 2. kolo, pribyly Gemma 31B a Hemmingway:
+Kriteria: ochota (nic nezjemni), selsky rozum, proza, souvislost, vejde se. Kandidati podle UGI [7] a EQ-Bench Longform [8], soubory GGUF jsou od mradermachera [5, 6, 27, 28, 29, 30]. Vsechno anglicky: kazdy model napsal 3 pribehy (uvod 600 + pokracovani 1 800 tokenu) a kratke testy (mimo jine ochota, realie, emoce), hodnotil naslepo cloudovy LLM Claude Opus 5.5 (ne lide), pribehy a emoce dvakrat. Data v `mereni/2026-11-13` mimo repo. 1. kolo: Qwen se zacyklil, Goetia porusovala fakta. Dal Gemma a WeirdCompound. 2. kolo, pribyly Gemma 31B a Hemmingway:
 
 | | Gemma 31B | Hemm. | Gemma | WeirdC. |
 |---|---|---|---|---|
@@ -72,9 +73,9 @@ Kriteria: ochota (nic nezjemni), selsky rozum, proza, souvislost, vejde se. Kand
 
 Realie = podil spravnych z overenych udaju o svete (24–39 na model). Emoce = v kolika z 10 hodnoceni byla z textu poznat. Poradi = prumer z 6 hodnoceni, 1–5 (paty text byla Gemma s jinym nastavenim). Plneni planu = body od soudce, vic je lip. U poradi a rozbitych slov (soucet z 6 hodnoceni) je mensi lepsi.
 
-Vybral jsem **Gemma 4 31B** – nejlepsi rozum a emoce, nic neodmitla. Hemmingway pise lepsi pribehy, ale nejvic si vymysli (realie 67 %, 13 poruseni faktu nametu proti 8). Pomer vykonu a narocnosti: vsech sest modelu se vejde na stejnou kartu, plati se jen rychlosti a rezervou VRAM. Gemma 31B je 3× pomalejsi nez nejrychlejsi a nechava nejmin VRAM, ale 35 tok/s je 500 slov za 19 s, to mi staci. Rychla alternativa **Gemma 4 26B-A4B** (111 tok/s, realie 89 %).
+Vybral jsem **Gemma 4 31B** – nejlepsi rozum a emoce, nic neodmitla. Hemmingway pise lepsi pribehy, ale nejvic si vymysli (realie 67 %, 13 poruseni faktu nametu proti 8). Pomer vykonu a narocnosti: vsech sest modelu se vejde na stejnou kartu, plati se jen rychlosti a rezervou VRAM. Gemma 31B je 3× pomalejsi nez nejrychlejsi a nechava nejmin VRAM, ale 35 tok/s je 500 slov za 19 s (cely krok i s planem a doplnovanim pameti prumerne 28 s, dok. 03), to mi staci. Rychla alternativa **Gemma 4 26B-A4B** (111 tok/s, realie 89 %) – v ostatnich radcich tabulky je ale posledni, takze jen kdyz jde hlavne o rychlost.
 
-Omezeni: kazdy pribeh jen jednou a kratky, soudce je LLM (stejny text ohodnotil dvakrat jinak). Rozbita slova u Gemmy nespravila zmena KV cache ani zkraceni dosahu DRY, cast jich ale DRY opravdu dela (dok. 03). Dal resit: poznamky „(Wait…“ v textu, smycky, tempo.
+Omezeni: kazdy pribeh jen jednou a kratky, soudce je LLM (stejny text ohodnotil dvakrat jinak). Rozbita slova u Gemmy nespravila zmena KV cache ani zkraceni dosahu DRY; u Gemmy 31B jich cast opravdu dela DRY (dok. 03). Dal resit: poznamky „(Wait…“ v textu, smycky, tempo.
 
 ## Zdroje
 
@@ -104,3 +105,7 @@ Omezeni: kazdy pribeh jen jednou a kratky, soudce je LLM (stejny text ohodnotil 
 24. OLLAMA. *Context length*. Online. [b. r.]. Dostupne z: https://docs.ollama.com/context-length. [cit. 2026-11-13].
 25. OLLAMA. *Pull request #12030 (endpointy tokenize a detokenize)*. Online. 2025. Dostupne z: https://github.com/ollama/ollama/pull/12030. [cit. 2026-11-13].
 26. OLLAMA. *Ollama v0.40.16 – api/types.go*. Online. 2026. Dostupne z: https://raw.githubusercontent.com/ollama/ollama/v0.40.16/api/types.go. [cit. 2026-11-13].
+27. MRADERMACHER. *Qwen3.5-27B-Derestricted-i1-GGUF*. Online. [b. r.]. Dostupne z: https://huggingface.co/mradermacher/Qwen3.5-27B-Derestricted-i1-GGUF. [cit. 2026-11-26].
+28. MRADERMACHER. *Goetia-26B-A4B-v1.3-Absolute-Heretic-ARA-i1-GGUF*. Online. [b. r.]. Dostupne z: https://huggingface.co/mradermacher/Goetia-26B-A4B-v1.3-Absolute-Heretic-ARA-i1-GGUF. [cit. 2026-11-26].
+29. MRADERMACHER. *WeirdCompound-v1.7-24b-i1-GGUF*. Online. [b. r.]. Dostupne z: https://huggingface.co/mradermacher/WeirdCompound-v1.7-24b-i1-GGUF. [cit. 2026-11-26].
+30. MRADERMACHER. *Hemmingway-1-Uncensored-Heretic-i1-GGUF*. Online. [b. r.]. Dostupne z: https://huggingface.co/mradermacher/Hemmingway-1-Uncensored-Heretic-i1-GGUF. [cit. 2026-11-26].

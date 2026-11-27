@@ -26,7 +26,7 @@ Vse bezi lokalne na `127.0.0.1`, backend servuje i sestaveny frontend, takze pro
 
 Pokracovani pribehu: frontend si pres REST API nacte projekt a kapitoly → `llm/story.js` slozi prompt a posle ho na `/api/llm` → backend overi prihlaseni a streamuje odpoved z KoboldCpp → frontend novy text a pamet ulozi pres `PUT`.
 
-Hesla Argon2id, prihlaseni = nahodny token v cookie `HttpOnly`, `SameSite=Strict` a v tabulce `sessions`.
+Hesla Argon2id [1], prihlaseni = nahodny token v cookie `HttpOnly`, `SameSite=Strict` [2] a v tabulce `sessions` (bez `Secure`, vse bezi po HTTP jen na `127.0.0.1`).
 
 ## Datovy model
 
@@ -84,11 +84,11 @@ erDiagram
     }
 ```
 
-Rukopis = kapitoly za sebou podle `position`; pro model se spoji do jednoho textu a novy text se pripise do posledni kapitoly. Pamet patri projektu; kdyz se zmeni text pred `memory_up_to`, vynuluje se a spocita znovu. Styl (popis + ukazky) a kartoteka (postavy, mista, predmety) se budou vkladat do promptu. Smazani uzivatele nebo projektu smaze i jeho data (`ON DELETE CASCADE`), smazani stylu jen vynuluje `projects.style_id`.
+Rukopis = kapitoly za sebou podle `position`; pro model se jejich texty spoji do jednoho (mezi nimi prazdny radek, bez nazvu) a novy text se pripise do posledni kapitoly. Pamet patri projektu; kdyz se zmeni text pred `memory_up_to`, frontend ji vynuluje a spocita znovu. Styl (popis + ukazky) a kartoteka (postavy, mista, predmety) se budou vkladat do promptu. Smazani uzivatele nebo projektu smaze i jeho data (`ON DELETE CASCADE`), smazani stylu jen vynuluje `projects.style_id` (`ON DELETE SET NULL`). SQLite cizi klice hlida jen s `PRAGMA foreign_keys = ON`, backend ho proto zapne na kazdem spojeni [3].
 
 ## REST API
 
-JSON, pole jako sloupce v diagramu (bez `password_hash`). Bez prihlaseni `401`, cizi nebo neexistujici zaznam `404`, spatny vstup `422`, chyba = `{"detail": ...}` (vychozi tvar FastAPI: text, u `422` seznam chyb).
+JSON, pole jako sloupce v diagramu (bez `password_hash`). Bez prihlaseni `401`, cizi nebo neexistujici zaznam `404`, spatny vstup `422`, chyba = `{"detail": ...}` (vychozi tvar FastAPI [4]: text, u `422` seznam chyb).
 
 | Metoda a cesta | Co dela | Odpoved |
 |---|---|---|
@@ -104,3 +104,10 @@ JSON, pole jako sloupce v diagramu (bez `password_hash`). Bez prihlaseni `401`, 
 | POST `/api/llm/v1/chat/completions`, POST `/api/llm/api/extra/tokencount`, GET `/api/llm/api/extra/true_max_context_length` | preposle na KoboldCpp, jine cesty `404` | odpoved KoboldCpp, chat jako stream |
 
 Priklad: `PUT /api/chapters/7` s telem `{"position": 2, "title": "Boure", "text": "…"}` vrati `200` a `{"id": 7, "project_id": 3, "position": 2, "title": "Boure", "text": "…"}`.
+
+## Zdroje
+
+1. OWASP. *Password Storage Cheat Sheet*. Online. [b. r.]. Dostupne z: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html. [cit. 2026-11-26].
+2. OWASP. *Session Management Cheat Sheet*. Online. [b. r.]. Dostupne z: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html. [cit. 2026-11-26].
+3. SQLITE. *SQLite Foreign Key Support*. Online. 2026. Dostupne z: https://www.sqlite.org/foreignkeys.html. [cit. 2026-11-26].
+4. FASTAPI. *Handling Errors*. Online. [b. r.]. Dostupne z: https://fastapi.tiangolo.com/tutorial/handling-errors/. [cit. 2026-11-26].
